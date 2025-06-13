@@ -1,0 +1,51 @@
+.splash-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #0f0f0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: screenOn 2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.splash-glow {
+  background: rgba(0,255,0,0.05);
+  padding: 40px 80px;
+  border-radius: 20px;
+  box-shadow: 0 0 60px #00ff00, 0 0 10px #00ff00 inset;
+  animation: glow 2s infinite alternate;
+}
+
+.splash-title {
+  color: #00ff00;
+  font-family: 'Orbitron', monospace, Arial;
+  font-size: 3rem;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00;
+  animation: flicker 2s linear;
+}
+
+@keyframes screenOn {
+  0% { opacity: 0; filter: blur(10px);}
+  30% { opacity: 1; filter: blur(0);}
+  100% { opacity: 1; }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 30px #00ff00, 0 0 5px #00ff00 inset; }
+  to { box-shadow: 0 0 80px #00ff00, 0 0 20px #00ff00 inset; }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  10% { opacity: 0.8; }
+  20% { opacity: 1; }
+  30% { opacity: 0.7; }
+  40% { opacity: 1; }
+  50% { opacity: 0.9; }
+  60% { opacity: 1; }
+  70% { opacity: 0.8; }
+  80% { opacity: 1; }
+  90% { opacity: 0.95; }
+}
