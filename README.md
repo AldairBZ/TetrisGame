@@ -57,7 +57,8 @@ cd tetris
 mvn test
 ```
 
-Los tests (`BoardTest`) cubren la lógica del juego que no depende de la interfaz: límites del tablero, colisiones, limpieza de líneas y giros de las piezas.
+- `BoardTest` cubre la lógica del juego que no depende de la interfaz: límites del tablero, colisiones, limpieza de líneas y giros de las piezas.
+- `PuntuacionDAOTest` es un test de integración que guarda una puntuación en MySQL y comprueba que aparece en el ranking. Si no hay base de datos, se omite.
 
 ## Estructura
 
