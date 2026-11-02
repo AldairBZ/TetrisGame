@@ -4,7 +4,7 @@ Tetris de escritorio hecho en **Java con Swing**, con ranking de puntuaciones gu
 
 Lo hice para practicar programación orientada a objetos aplicada a algo con reglas claras y estado que cambia todo el rato: un tablero, piezas que giran, colisiones, puntuación y niveles.
 
-![Java](https://img.shields.io/badge/Java-21-orange) ![Swing](https://img.shields.io/badge/UI-Swing-blue) ![MySQL](https://img.shields.io/badge/DB-MySQL-4479A1) ![JUnit](https://img.shields.io/badge/tests-JUnit%205-25A162)
+[![CI](https://github.com/AldairBZ/TetrisGame/actions/workflows/ci.yml/badge.svg)](https://github.com/AldairBZ/TetrisGame/actions/workflows/ci.yml) ![Java](https://img.shields.io/badge/Java-21-orange) ![Swing](https://img.shields.io/badge/UI-Swing-blue) ![MySQL](https://img.shields.io/badge/DB-MySQL-4479A1) ![JUnit](https://img.shields.io/badge/tests-JUnit%205-25A162)
 
 ## Qué incluye
 
