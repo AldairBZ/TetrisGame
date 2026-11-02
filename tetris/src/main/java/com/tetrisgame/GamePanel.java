@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -25,6 +26,10 @@ public class GamePanel extends JPanel {
     private boolean canHold = true;
     private final SoundPlayer soundPlayer = new SoundPlayer();
     private final List<FloatingText> floatingTexts = new ArrayList<>();
+    private final List<Tetromino.Type> bag = new ArrayList<>();
+    private final Random random = new Random();
+    private final PuntuacionDAO dao = new PuntuacionDAO();
+    private boolean gameOver = false;
 
     private int score = 0;
     private int highScore = 0;
@@ -39,7 +44,6 @@ public class GamePanel extends JPanel {
 
         board = new Board(cols, rows);
 
-        PuntuacionDAO dao = new PuntuacionDAO();
         highScore = dao.obtenerMaxPuntuacion();
 
         nextPiece = generateRandomPiece();
@@ -47,31 +51,7 @@ public class GamePanel extends JPanel {
 
         timer = new Timer(initialDelay, e -> {
             if (!tryMove(0, 1)) {
-                board.placeTetromino(currentPiece, pieceX, pieceY);
-                int linesCleared = board.clearLines();
-                if (linesCleared > 0) {
-                    int multiplier = switch (linesCleared) {
-                        case 2 -> 150;
-                        case 3 -> 175;
-                        case 4 -> 200;
-                        default -> 100;
-                    };
-                    int gained = linesCleared * multiplier;
-                    score += gained;
-                    floatingTexts.add(new FloatingText("+" + gained, pieceX * tileSize, pieceY * tileSize));
-                    soundPlayer.playEffect("/sounds/line_clear.wav");
-
-                    int progressPercent = (score * 100) / maxScore;
-                    level = Math.max(1, progressPercent / 10);
-
-                    if (level != previousLevel) {
-                        int newDelay = Math.max(50, initialDelay - (level - 1) * 30);
-                        timer.setDelay(newDelay);
-                        previousLevel = level;
-                    }
-                }
-                if (score > highScore) highScore = score;
-                spawnPiece();
+                lockPiece();
             }
             updateFloatingTexts();
             repaint();
@@ -81,57 +61,71 @@ public class GamePanel extends JPanel {
 
         addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
+                if (gameOver) return;
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_LEFT -> tryMove(-1, 0);
                     case KeyEvent.VK_RIGHT -> tryMove(1, 0);
                     case KeyEvent.VK_DOWN -> {
-                        boolean movedDown = tryMove(0, 1);
-                        if (movedDown) score += pointsPerSoftDrop;
+                        if (tryMove(0, 1)) addScore(pointsPerSoftDrop);
                     }
-                    case KeyEvent.VK_UP -> {
-                        Tetromino rotated = currentPiece.copy();
-                        rotated.rotateClockwise();
-                        if (board.isValidPosition(rotated, pieceX, pieceY)) {
-                            currentPiece = rotated;
-                        }
-                    }
+                    case KeyEvent.VK_UP -> rotateWithWallKick();
                     case KeyEvent.VK_C -> holdPiece();
                     case KeyEvent.VK_SPACE -> {
                         int dropDistance = 0;
                         while (tryMove(0, 1)) dropDistance++;
-                        if (dropDistance > 0) {
-                            score += dropDistance * pointsPerHardDrop;
-                            board.placeTetromino(currentPiece, pieceX, pieceY);
-                            int linesCleared = board.clearLines();
-                            if (linesCleared > 0) {
-                                int multiplier = switch (linesCleared) {
-                                    case 2 -> 150;
-                                    case 3 -> 175;
-                                    case 4 -> 200;
-                                    default -> 100;
-                                };
-                                int gained = linesCleared * multiplier;
-                                score += gained;
-                                floatingTexts.add(new FloatingText("+" + gained, pieceX * tileSize, pieceY * tileSize));
-                                soundPlayer.playEffect("/sounds/line_clear.wav");
-
-                                int progressPercent = (score * 100) / maxScore;
-                                level = Math.max(1, progressPercent / 10);
-
-                                if (level != previousLevel) {
-                                    int newDelay = Math.max(50, initialDelay - (level - 1) * 30);
-                                    timer.setDelay(newDelay);
-                                    previousLevel = level;
-                                }
-                            }
-                            if (score > highScore) highScore = score;
-                            spawnPiece();
-                        }
+                        addScore(dropDistance * pointsPerHardDrop);
+                        // La pieza se fija siempre, aunque ya estuviera apoyada
+                        lockPiece();
                     }
                 }
                 repaint();
             }
         });
+    }
+
+    private void lockPiece() {
+        board.placeTetromino(currentPiece, pieceX, pieceY);
+        int linesCleared = board.clearLines();
+        if (linesCleared > 0) {
+            int multiplier = switch (linesCleared) {
+                case 2 -> 150;
+                case 3 -> 175;
+                case 4 -> 200;
+                default -> 100;
+            };
+            int gained = linesCleared * multiplier;
+            addScore(gained);
+            floatingTexts.add(new FloatingText("+" + gained, pieceX * tileSize, pieceY * tileSize));
+            soundPlayer.playEffect("/sounds/line_clear.wav");
+        }
+        spawnPiece();
+    }
+
+    private void addScore(int points) {
+        score += points;
+        if (score > highScore) highScore = score;
+
+        int progressPercent = (score * 100) / maxScore;
+        level = Math.max(1, progressPercent / 10);
+        if (level != previousLevel) {
+            timer.setDelay(Math.max(50, initialDelay - (level - 1) * 30));
+            previousLevel = level;
+        }
+    }
+
+    // Prueba a girar en el sitio y, si choca, desplazándola un poco (wall kick)
+    private void rotateWithWallKick() {
+        if (currentPiece.getType() == Tetromino.Type.O) return;
+
+        Tetromino rotated = currentPiece.copy();
+        rotated.rotateClockwise();
+        for (int kick : new int[]{0, -1, 1, -2, 2}) {
+            if (board.isValidPosition(rotated, pieceX + kick, pieceY)) {
+                currentPiece = rotated;
+                pieceX += kick;
+                return;
+            }
+        }
     }
 
     private void updateFloatingTexts() {
@@ -141,10 +135,13 @@ public class GamePanel extends JPanel {
         });
     }
 
+    // Sistema "7-bag": salen las 7 piezas en orden aleatorio antes de repetir
     private Tetromino generateRandomPiece() {
-        Tetromino.Type[] values = Tetromino.Type.values();
-        Tetromino.Type randomType = values[new Random().nextInt(values.length)];
-        return new Tetromino(randomType);
+        if (bag.isEmpty()) {
+            bag.addAll(List.of(Tetromino.Type.values()));
+            Collections.shuffle(bag, random);
+        }
+        return new Tetromino(bag.remove(bag.size() - 1));
     }
 
     private void spawnPiece() {
@@ -157,15 +154,11 @@ public class GamePanel extends JPanel {
         }
     }
 
+    // Las piezas solo aparecen arriba; si no caben ahí, la partida ha terminado
     private boolean findValidSpawnPosition() {
-        pieceX = cols / 2;
-        for (int y = 0; y < rows; y++) {
-            pieceY = y;
-            if (board.isValidPosition(currentPiece, pieceX, pieceY)) {
-                return true;
-            }
-        }
-        return false;
+        pieceX = cols / 2 - 1;
+        pieceY = 0;
+        return board.isValidPosition(currentPiece, pieceX, pieceY);
     }
 
     private void holdPiece() {
@@ -193,7 +186,6 @@ public class GamePanel extends JPanel {
         }
         return false;
     }
- // Dentro de GamePanel, antes de paintComponent, añade este método:
     private int getGhostPieceY() {
         int ghostY = pieceY;
         while (board.isValidPosition(currentPiece, pieceX, ghostY + 1)) {
@@ -336,15 +328,18 @@ public class GamePanel extends JPanel {
     }
 
     private void endGame() {
+        if (gameOver) return;
+        gameOver = true;
         timer.stop();
-        PuntuacionDAO dao = new PuntuacionDAO();
 
+        // Cancelar el diálogo ya no deja al jugador atrapado: simplemente no se guarda
         String nombre = JOptionPane.showInputDialog(this, "Nombre (3 caracteres):");
-        while (nombre == null || nombre.length() != 3) {
+        while (nombre != null && nombre.trim().length() != 3) {
             nombre = JOptionPane.showInputDialog(this, "Nombre inválido. (3 caracteres):");
         }
-
-        dao.guardarPuntuacion(nombre, score);
+        if (nombre != null) {
+            dao.guardarPuntuacion(nombre.trim().toUpperCase(), score);
+        }
 
         StringBuilder mensaje = new StringBuilder();
         mensaje.append("Game Over\nPuntos: ").append(score)
@@ -352,6 +347,7 @@ public class GamePanel extends JPanel {
                .append("\n\nTOP 10:\n");
 
         List<String> top10 = dao.obtenerTop10();
+        if (top10.isEmpty()) mensaje.append("(ranking no disponible sin MySQL)\n");
         for (String entrada : top10) mensaje.append(entrada).append("\n");
 
         JOptionPane.showMessageDialog(this, mensaje.toString(), "Tetris", JOptionPane.INFORMATION_MESSAGE);
@@ -371,8 +367,10 @@ public class GamePanel extends JPanel {
         previousLevel = 1;
         canHold = true;
         heldPiece = null;
+        gameOver = false;
         floatingTexts.clear();
-        board.clearAll();  // Necesitarás un método para limpiar el tablero
+        board.clearAll();
+        bag.clear();
         nextPiece = generateRandomPiece();
         spawnPiece();
 
