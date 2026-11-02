@@ -19,8 +19,3 @@ node_modules/
 
 # Local config
 .env
-
-# AI tooling
-.claude/
-CLAUDE.md
-AGENTS.md
