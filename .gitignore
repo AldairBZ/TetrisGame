@@ -1,0 +1,26 @@
+# Build
+target/
+*.class
+*.jar
+
+# JVM crash logs
+hs_err_pid*.log
+
+# Node
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.settings/
+.project
+.classpath
+
+# Local config
+.env
+
+# AI tooling
+.claude/
+CLAUDE.md
+AGENTS.md
